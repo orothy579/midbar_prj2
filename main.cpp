@@ -2,6 +2,7 @@
 using namespace cv;
 using namespace std;
 
+// 250318
 // DFT 결과의 사분면을 상호 교환(Shift)하여 0주파수를 중앙으로 이동시키는 함수
 // (src는 CV_32FC2 형태여야 함: 복소수 2채널)
 void shiftDFT(Mat &src)
