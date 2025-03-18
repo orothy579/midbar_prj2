@@ -33,7 +33,7 @@ void shiftDFT(Mat &src)
 int main()
 {
   // 1) 그레이스케일 영상 로드
-  Mat img = imread("test_30_f1.jpg", IMREAD_GRAYSCALE);
+  Mat img = imread("../image/test_30_f1.jpg", IMREAD_GRAYSCALE);
   if (img.empty())
   {
     cerr << "이미지를 로드할 수 없습니다." << endl;
