@@ -130,8 +130,8 @@ if __name__ == "__main__":
     # 실행 예시
     filtered_bgr = remove_horizontal_banding_rgb(
         "/Users/lch/development/image_transformer/image/test_30_f1.jpg",
-        peak_distance=2,
-        peak_prominence=0.02,
+        peak_distance=1,
+        peak_prominence=0.01,
         radius=2
     )
 

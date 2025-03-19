@@ -125,4 +125,4 @@ if __name__ == "__main__":
         plt.show()
 
         # 필요하면 저장
-        cv2.imwrite("result_banding_removed_hsv.jpg", result_bgr)
+        cv2.imwrite("../result/result_banding_removed_hsv.jpg", result_bgr)
