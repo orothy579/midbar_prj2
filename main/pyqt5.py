@@ -91,9 +91,9 @@ class BandingRemovalApp(QMainWindow):
         self.setWindowTitle("Horizontal Banding Removal")
 
         # 기본 파라미터
-        self.peak_distance = 5
-        self.peak_prominence = 5
-        self.radius = 5
+        self.peak_distance = 1
+        self.peak_prominence = 1
+        self.radius = 1
 
         self.original_gray = None  # 원본 이미지(그레이)
         self.filtered_gray = None  # 필터링 결과
@@ -118,7 +118,7 @@ class BandingRemovalApp(QMainWindow):
         dist_layout = QHBoxLayout()
         self.slider_dist = QSlider(Qt.Horizontal)
         self.slider_dist.setMinimum(1)
-        self.slider_dist.setMaximum(500)
+        self.slider_dist.setMaximum(5)
         self.slider_dist.setValue(self.peak_distance)
         self.slider_dist.valueChanged.connect(self.on_slider_update)
         self.label_dist = QLabel(f"{self.peak_distance}")
@@ -131,7 +131,7 @@ class BandingRemovalApp(QMainWindow):
         prom_layout = QHBoxLayout()
         self.slider_prom = QSlider(Qt.Horizontal)
         self.slider_prom.setMinimum(1)
-        self.slider_prom.setMaximum(500)
+        self.slider_prom.setMaximum(3000)
         self.slider_prom.setValue(self.peak_prominence)
         self.slider_prom.valueChanged.connect(self.on_slider_update)
 
@@ -145,7 +145,7 @@ class BandingRemovalApp(QMainWindow):
         rad_layout = QHBoxLayout()
         self.slider_rad = QSlider(Qt.Horizontal)
         self.slider_rad.setMinimum(1)
-        self.slider_rad.setMaximum(50)
+        self.slider_rad.setMaximum(30)
         self.slider_rad.setValue(self.radius)
         self.slider_rad.valueChanged.connect(self.on_slider_update)
 
@@ -190,11 +190,11 @@ class BandingRemovalApp(QMainWindow):
             return
 
         self.peak_distance = self.slider_dist.value()
-        self.peak_prominence = self.slider_prom.value() / 100.0
+        self.peak_prominence = self.slider_prom.value() / 1000.0
         self.radius = self.slider_rad.value()
 
         self.label_dist.setText(f"{self.peak_distance}")
-        self.label_prom.setText(f"{self.peak_prominence:.2f}")
+        self.label_prom.setText(f"{self.peak_prominence:.3f}")
         self.label_rad.setText(f"{self.radius}")
 
         # 필터 적용
