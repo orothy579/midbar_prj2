@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 
 
-def remove_horizontal_banding_automatic(img_path, peak_distance=5, peak_prominence=0.05, radius=5):
+def remove_horizontal_banding_automatic(img_path, peak_distance, peak_prominence, radius):
     """
     - img_path: 분석할 이미지 파일 경로 (그레이스케일에 적합)
     - peak_distance: 인접 peak 간 최소 거리 (픽셀 단위)
@@ -119,7 +119,7 @@ def remove_horizontal_banding_automatic(img_path, peak_distance=5, peak_prominen
 if __name__ == "__main__":
     # 실제 테스트
     filtered = remove_horizontal_banding_automatic(
-        "/Users/lch/development/image_transformer/image/test_30_f1.jpg",
+        "/Users/lch/development/image_transformer/image/test_60_f1_3.jpg",
         peak_distance=5,
         peak_prominence=0.02,
         radius=10
