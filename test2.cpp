@@ -39,8 +39,8 @@ Mat removeBandingDFT(const Mat &src, int radius = 10)
 
   // 예시: 수직 방향 밴딩 (중앙에서 좌우로 떨어진 곳을 필터링)
   vector<Point> notchCenters = {
-      Point(dftImg.cols / 2, dftImg.rows / 2 + 20),
-      Point(dftImg.cols / 2, dftImg.rows / 2 - 20)};
+      Point(dftImg.cols / 2, dftImg.rows / 2 + 26),
+      Point(dftImg.cols / 2, dftImg.rows / 2 - 26)};
 
   // 노치 필터 적용
   for (Point p : notchCenters)
@@ -77,7 +77,7 @@ int main()
   // 각 채널 밴딩 제거 처리
   for (int i = 0; i < channels.size(); i++)
   {
-    channels[i] = removeBandingDFT(channels[i], 17); // radius는 실험적으로 조정 가능
+    channels[i] = removeBandingDFT(channels[i], 7); // radius는 실험적으로 조정 가능
   }
 
   Mat resultImg;
