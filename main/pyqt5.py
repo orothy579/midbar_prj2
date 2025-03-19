@@ -40,15 +40,6 @@ def remove_horizontal_banding_single_channel(gray_img,
         if dist > 0:
             banding_candidates.append(p)
 
-    if not banding_candidates:
-        # 밴딩 없음
-        dft_ishift = np.fft.ifftshift(dft_shifted, axes=[0, 1])
-        recovered = cv2.idft(
-            dft_ishift, flags=cv2.DFT_REAL_OUTPUT | cv2.DFT_SCALE)
-        recovered_norm = cv2.normalize(
-            recovered, None, 0, 255, cv2.NORM_MINMAX)
-        return np.uint8(recovered_norm)
-
     # 노치 필터
     notch_mask = np.ones((h, w, 2), np.float32)
     for p in banding_candidates:
@@ -97,7 +88,7 @@ def cvimg_to_qpixmap(cv_img):
 class BandingRemovalApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Horizontal Banding Removal (PyQt Demo)")
+        self.setWindowTitle("Horizontal Banding Removal")
 
         # 기본 파라미터
         self.peak_distance = 5
@@ -120,31 +111,49 @@ class BandingRemovalApp(QMainWindow):
         self.image_label.setAlignment(Qt.AlignCenter)
         vlayout.addWidget(self.image_label)
 
+        # dist, prominece , radius 값 표시
+        self.label_dist = QLabel(f"distance: {self.peak_distance}")
+        self.label_prom = QLabel(f"prominence: {self.peak_prominence}")
+        self.label_rad = QLabel(f"radius: {self.radius}")
+
+        vlayout.addWidget(self.label_dist)
+        vlayout.addWidget(self.label_prom)
+        vlayout.addWidget(self.label_rad)
+
         # 슬라이더 레이아웃
         slider_layout = QHBoxLayout()
 
         # Slider 1: peak_distance
+        dist_layout = QHBoxLayout()
         self.slider_dist = QSlider(Qt.Horizontal)
         self.slider_dist.setMinimum(1)
-        self.slider_dist.setMaximum(10)
+        self.slider_dist.setMaximum(500)
         self.slider_dist.setValue(self.peak_distance)
         self.slider_dist.valueChanged.connect(self.on_slider_update)
-        slider_layout.addWidget(QLabel("distance:"))
-        slider_layout.addWidget(self.slider_dist)
+        self.label_dist = QLabel(f"{self.peak_distance}")
+        dist_layout.addWidget(QLabel("distance:"))
+        dist_layout.addWidget(self.slider_dist)
+        dist_layout.addWidget(self.label_dist)
+        slider_layout.addLayout(dist_layout)
 
         # Slider 2: peak_prominence
+        prom_layout = QHBoxLayout()
         self.slider_prom = QSlider(Qt.Horizontal)
         self.slider_prom.setMinimum(1)
-        self.slider_prom.setMaximum(10)
+        self.slider_prom.setMaximum(500)
         self.slider_prom.setValue(self.peak_prominence)
         self.slider_prom.valueChanged.connect(self.on_slider_update)
-        slider_layout.addWidget(QLabel("prominence:"))
-        slider_layout.addWidget(self.slider_prom)
+
+        self.label_prom = QLabel(f"{self.peak_prominence: .2f}")
+        prom_layout.addWidget(QLabel("prominence:"))
+        prom_layout.addWidget(self.slider_prom)
+        prom_layout.addWidget(self.label_prom)
+        slider_layout.addLayout(prom_layout)
 
         # Slider 3: radius
         self.slider_rad = QSlider(Qt.Horizontal)
         self.slider_rad.setMinimum(1)
-        self.slider_rad.setMaximum(10)
+        self.slider_rad.setMaximum(50)
         self.slider_rad.setValue(self.radius)
         self.slider_rad.valueChanged.connect(self.on_slider_update)
         slider_layout.addWidget(QLabel("radius:"))
@@ -179,16 +188,25 @@ class BandingRemovalApp(QMainWindow):
             # 필터 적용
             self.apply_filter()
 
+            self.label_dist.setText(f"distance: {self.peak_distance}")
+            self.label_prom.setText(
+                f"prominence: {self.peak_prominence:.2f}")  # 소수점 2자리
+            self.label_rad.setText(f"radius: {self.radius}")
+
     def apply_filter(self):
         """슬라이더 값 반영 -> 밴딩 제거 -> 표시."""
         if self.original_gray is None:
             return
 
         self.peak_distance = self.slider_dist.value()
-        self.peak_prominence = self.slider_prom.value()
+        self.peak_prominence = self.slider_prom.value() / 100.0
         self.radius = self.slider_rad.value()
 
-        # 수평 밴딩 제거
+        self.label_dist.setText(f"distance: {self.peak_distance}")
+        self.label_prom.setText(f"prominence: {self.peak_prominence:.2f}")
+        self.label_rad.setText(f"radius: {self.radius}")
+
+        # 필터 적용
         self.filtered_gray = remove_horizontal_banding_gray(
             self.original_gray,
             peak_distance=self.peak_distance,

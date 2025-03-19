@@ -42,6 +42,5 @@ def show_2d_spectrum(img_path):
 
 
 if __name__ == "__main__":
-    # test_30_f1.jpg 파일에 대해 2D 스펙트럼 시각화
     show_2d_spectrum(
-        "/Users/lch/development/image_transformer/image/test_30_f1.jpg")
+        "/Users/lch/development/image_transformer/result_banding_removed_hsv.jpg")

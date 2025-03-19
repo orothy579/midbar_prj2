@@ -115,9 +115,9 @@ if __name__ == "__main__":
     # 실제 테스트
     result_bgr = remove_horizontal_banding_luma(
         img_path="/Users/lch/development/image_transformer/image/test_30_f1.jpg",   # 실제 파일 경로
-        peak_distance=2,
-        peak_prominence=0.01,
-        radius=5
+        peak_distance=1,
+        peak_prominence=2.06,
+        radius=1
     )
 
     if result_bgr is not None:

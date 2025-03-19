@@ -103,9 +103,9 @@ if __name__ == "__main__":
     # 테스트 예시
     result_bgr = remove_horizontal_banding_hsv(
         "/Users/lch/development/image_transformer/image/test_30_f1.jpg",
-        peak_distance=5,
-        peak_prominence=0.05,
-        radius=10
+        peak_distance=1,
+        peak_prominence=2.06,
+        radius=1
     )
 
     if result_bgr is not None:
