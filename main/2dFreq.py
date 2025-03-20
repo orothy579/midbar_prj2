@@ -43,4 +43,4 @@ def show_2d_spectrum(img_path):
 
 if __name__ == "__main__":
     show_2d_spectrum(
-        "/Users/lch/development/image_transformer/result_banding_removed_hsv.jpg")
+        "/Users/lch/development/image_transformer/result/gradfun.png")

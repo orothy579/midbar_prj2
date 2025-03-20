@@ -77,5 +77,8 @@ def find_banding_frequency(img_path, distance, prominence):
 # 실제 사용 예:
 if __name__ == "__main__":
     k_value = find_banding_frequency(
-        "/Users/lch/development/image_transformer/image/test_30_f1.jpg", distance=5, prominence=0.05)
+        "/Users/lch/development/image_transformer/result/hsv.jpg", distance=5, prominence=0.05)
+    k_value1 = find_banding_frequency(
+        "/Users/lch/development/image_transformer/image/test_30_f1.jpg", distance=5, prominence=0.05
+    )
     print("Estimated k =", k_value)

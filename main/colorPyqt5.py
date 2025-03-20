@@ -221,11 +221,6 @@ class BandingRemovalApp(QMainWindow):
         btn_load.clicked.connect(self.load_image)
         btn_layout.addWidget(btn_load)
 
-        # Refresh Button
-        btn_refresh = QPushButton("Refresh Filter")
-        btn_refresh.clicked.connect(self.apply_filter)
-        btn_layout.addWidget(btn_refresh)
-
     def load_image(self):
         """이미지 파일 열기 & BGR로 보관."""
         file_path, _ = QFileDialog.getOpenFileName(
