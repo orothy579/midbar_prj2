@@ -21,7 +21,7 @@ def remove_banding_single_channel(gray_img,
                                   peak_prominence,
                                   radius):
     """
-    (시각화 없음) 단일 채널에서 수평 밴딩 제거.
+    단일 채널에서 수평 밴딩 제거.
     노치 필터 적용 전의 dft_shifted(시각화 용)와,
     최종 복원 이미지를 반환.
     """
@@ -57,8 +57,12 @@ def remove_banding_single_channel(gray_img,
     for p in banding_candidates:
         y_up = p
         y_down = 2 * center_y - p
-        cv2.circle(notch_mask, (center_x, y_up), radius, (0, 0), -1)
-        cv2.circle(notch_mask, (center_x, y_down), radius, (0, 0), -1)
+
+        # DC 성분 (center_y) 보호 조건 추가
+        if abs(y_up - center_y) > radius:
+            cv2.circle(notch_mask, (center_x, y_up), radius, (0, 0), -1)
+        if abs(y_down - center_y) > radius:
+            cv2.circle(notch_mask, (center_x, y_down), radius, (0, 0), -1)
 
     # 노치 필터 적용
     dft_shifted *= notch_mask
@@ -92,7 +96,8 @@ def remove_horizontal_banding_bgr(bgr_img, mode,
         dft_img, dft_shifted, out_gray = remove_banding_single_channel(
             gray, peak_distance, peak_prominence, radius
         )
-        return dft_img, dft_shifted, cv2.cvtColor(out_gray, cv2.COLOR_GRAY2BGR)
+        filtered_bgr = cv2.cvtColor(out_gray, cv2.COLOR_GRAY2BGR)
+        return dft_img, dft_shifted, filtered_bgr
 
     elif mode == "RGB":
         rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
@@ -109,20 +114,22 @@ def remove_horizontal_banding_bgr(bgr_img, mode,
     elif mode == "HSV":
         hsv = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
         H, S, V = cv2.split(hsv)
-        _, _, V_filtered = remove_banding_single_channel(
+        dft_img_v, dft_shifted_v, V_filtered = remove_banding_single_channel(
             V, peak_distance, peak_prominence, radius
         )
         hsv_out = cv2.merge([H, S, V_filtered])
-        return None, None, cv2.cvtColor(hsv_out, cv2.COLOR_HSV2BGR)
+        filtered_bgr = cv2.cvtColor(hsv_out, cv2.COLOR_HSV2BGR)
+        return dft_img_v, dft_shifted_v, filtered_bgr
 
     elif mode == "YCrCb":
         ycrcb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2YCrCb)
         Y, Cr, Cb = cv2.split(ycrcb)
-        _, _, Y_filtered = remove_banding_single_channel(
+        dft_img_y, dft_shifted_y, Y_filtered = remove_banding_single_channel(
             Y, peak_distance, peak_prominence, radius
         )
         ycrcb_out = cv2.merge([Y_filtered, Cr, Cb])
-        return None, None, cv2.cvtColor(ycrcb_out, cv2.COLOR_YCrCb2BGR)
+        filtered_bgr = cv2.cvtColor(ycrcb_out, cv2.COLOR_YCrCb2BGR)
+        return dft_img_y, dft_shifted_y, filtered_bgr
 
     # 모드가 정의 밖이면
     return None, None, bgr_img
@@ -187,10 +194,10 @@ class BandingRemovalApp(QMainWindow):
         dist_layout = QHBoxLayout()
         self.slider_dist = QSlider(Qt.Horizontal)
         self.slider_dist.setMinimum(1)
-        self.slider_dist.setMaximum(20)
-        self.slider_dist.setValue(self.peak_distance)
+        self.slider_dist.setMaximum(100)
+        self.slider_dist.setValue(int(self.peak_distance * 100))
         self.slider_dist.valueChanged.connect(self.on_slider_update)
-        self.label_dist = QLabel(f"{self.peak_distance}")
+        self.label_dist = QLabel(f"{self.peak_distance:}")
         dist_layout.addWidget(QLabel("distance:"))
         dist_layout.addWidget(self.slider_dist)
         dist_layout.addWidget(self.label_dist)
@@ -203,7 +210,7 @@ class BandingRemovalApp(QMainWindow):
         self.slider_prom.setMaximum(1000)
         self.slider_prom.setValue(int(self.peak_prominence * 1000))
         self.slider_prom.valueChanged.connect(self.on_slider_update)
-        self.label_prom = QLabel(f"{self.peak_prominence: .2f}")
+        self.label_prom = QLabel(f"{self.peak_prominence:}")
         prom_layout.addWidget(QLabel("prominence:"))
         prom_layout.addWidget(self.slider_prom)
         prom_layout.addWidget(self.label_prom)
@@ -318,7 +325,7 @@ class BandingRemovalApp(QMainWindow):
         self.radius = self.slider_rad.value()
 
         # 라벨 업데이트
-        self.label_dist.setText(f"{self.peak_distance}")
+        self.label_dist.setText(f"{self.peak_distance:.2f}")
         self.label_prom.setText(f"{self.peak_prominence:.3f}")
         self.label_rad.setText(f"{self.radius}")
 
@@ -334,7 +341,7 @@ class BandingRemovalApp(QMainWindow):
             radius=self.radius
         )
 
-        # ★ "노치 필터 적용 전" 스펙트럼 보기 원하는 경우
+        #  "노치 필터 적용 전" 스펙트럼 보기 원하는 경우
         #    dft_shifted가 "필터 적용 후" 상태가 되지 않도록 주의해야 함.
         #    지금 코드에서는 remove_banding_single_channel 내에서
         #    이미 notch_mask를 곱해버리므로 "전/후" 구분이 모호.
