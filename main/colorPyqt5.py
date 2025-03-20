@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import sys
 import cv2
 import numpy as np
@@ -9,12 +10,21 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap, QImage
 
+import matplotlib
+matplotlib.use("Qt5Agg")  # PyQt5와 호환
 
-def remove_horizontal_banding_single_channel(gray_img,
-                                             peak_distance=5,
-                                             peak_prominence=0.05,
-                                             radius=5):
-    """단일 채널에서 수평 밴딩 제거."""
+plt.ion()  # 인터랙티브 모드 활성화
+
+
+def remove_banding_single_channel(gray_img,
+                                  peak_distance,
+                                  peak_prominence,
+                                  radius):
+    """
+    (시각화 없음) 단일 채널에서 수평 밴딩 제거.
+    노치 필터 적용 전의 dft_shifted(시각화 용)와,
+    최종 복원 이미지를 반환.
+    """
     float_img = np.float32(gray_img)
     dft_img = cv2.dft(float_img, flags=cv2.DFT_COMPLEX_OUTPUT)
     dft_shifted = np.fft.fftshift(dft_img, axes=[0, 1])
@@ -22,13 +32,13 @@ def remove_horizontal_banding_single_channel(gray_img,
     h, w = gray_img.shape
     center_y, center_x = h // 2, w // 2
 
-    # 주파수 세기 스펙트럼 (log 스케일)
+    # 주파수 세기(log 스케일)
     planes = cv2.split(dft_shifted)
     magnitude = cv2.magnitude(planes[0], planes[1])
     magnitude += 1.0
     mag_log = np.log(magnitude)
 
-    # 중앙 열 프로파일
+    # 중앙열 프로파일
     freq_profile = mag_log[:, center_x]
 
     # 피크 탐색
@@ -45,7 +55,6 @@ def remove_horizontal_banding_single_channel(gray_img,
     # 노치 필터 마스크
     notch_mask = np.ones((h, w, 2), np.float32)
     for p in banding_candidates:
-        # 위/아래 대칭 위치에 원을 그려서 제거
         y_up = p
         y_down = 2 * center_y - p
         cv2.circle(notch_mask, (center_x, y_up), radius, (0, 0), -1)
@@ -58,73 +67,75 @@ def remove_horizontal_banding_single_channel(gray_img,
     dft_ishift = np.fft.ifftshift(dft_shifted, axes=[0, 1])
     recovered = cv2.idft(dft_ishift, flags=cv2.DFT_REAL_OUTPUT | cv2.DFT_SCALE)
     recovered_norm = cv2.normalize(recovered, None, 0, 255, cv2.NORM_MINMAX)
-    return np.uint8(recovered_norm)
+
+    return dft_img, dft_shifted, np.uint8(recovered_norm)
 
 
 def remove_horizontal_banding_bgr(bgr_img, mode,
-                                  peak_distance=5,
-                                  peak_prominence=0.05,
-                                  radius=5):
+                                  peak_distance,
+                                  peak_prominence,
+                                  radius):
     """
     BGR 이미지를 입력받고, mode(Gray, RGB, HSV, YCrCb)에 따라
-    특정 채널 또는 모든 채널에 대해 remove_horizontal_banding_single_channel을 수행한 뒤
-    BGR로 되돌려 최종 이미지를 반환한다.
+    특정 채널 또는 모든 채널에 대해 remove_banding_single_channel을 수행한 뒤
+    BGR로 되돌려 최종 이미지를 반환.
+    + 노치 필터 적용 전 FFT를 '대표 1채널'만 반환
+      (Gray면 그대로, RGB/HSV/YCrCb면 그 중 하나를 대표로...)
     """
+    # 시각화용으로 쓸 "노치 필터 적용 전" dft_shifted / dft_img
+    # -> Gray 모드면 바로 그레이 채널, RGB/HSV/YCbCr면 그냥 첫 채널? 원하는 방식으로...
+    # 여기서는 "mode==Gray"인 경우에만 시각화한다고 가정(가장 단순).
+    # 실제로 RGB 등에서 모든 채널 FFT를 보고 싶으면, 여러 개 관리해야 함.
+
     if mode == "Gray":
-        # BGR -> Gray -> 단일 채널 밴딩 제거 -> BGR
         gray = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
-        out = remove_horizontal_banding_single_channel(
+        dft_img, dft_shifted, out_gray = remove_banding_single_channel(
             gray, peak_distance, peak_prominence, radius
         )
-        return cv2.cvtColor(out, cv2.COLOR_GRAY2BGR)
+        return dft_img, dft_shifted, cv2.cvtColor(out_gray, cv2.COLOR_GRAY2BGR)
 
     elif mode == "RGB":
-        # BGR -> RGB -> R/G/B 모든 채널 밴딩 제거 -> 다시 BGR
         rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
         channels = cv2.split(rgb)
         out_channels = []
         for ch in channels:
-            out_ch = remove_horizontal_banding_single_channel(
+            _, _, out_ch = remove_banding_single_channel(
                 ch, peak_distance, peak_prominence, radius
             )
             out_channels.append(out_ch)
         filtered_rgb = cv2.merge(out_channels)
-        return cv2.cvtColor(filtered_rgb, cv2.COLOR_RGB2BGR)
+        return None, None, cv2.cvtColor(filtered_rgb, cv2.COLOR_RGB2BGR)
 
     elif mode == "HSV":
-        # BGR -> HSV -> (H/S는 그대로, V만 밴딩 제거) -> 다시 BGR
         hsv = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
         H, S, V = cv2.split(hsv)
-        V_filtered = remove_horizontal_banding_single_channel(
+        _, _, V_filtered = remove_banding_single_channel(
             V, peak_distance, peak_prominence, radius
         )
         hsv_out = cv2.merge([H, S, V_filtered])
-        return cv2.cvtColor(hsv_out, cv2.COLOR_HSV2BGR)
+        return None, None, cv2.cvtColor(hsv_out, cv2.COLOR_HSV2BGR)
 
     elif mode == "YCrCb":
-        # BGR -> YCrCb -> (Y만 밴딩 제거, Cr/Cb는 그대로) -> 다시 BGR
         ycrcb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2YCrCb)
         Y, Cr, Cb = cv2.split(ycrcb)
-        Y_filtered = remove_horizontal_banding_single_channel(
+        _, _, Y_filtered = remove_banding_single_channel(
             Y, peak_distance, peak_prominence, radius
         )
         ycrcb_out = cv2.merge([Y_filtered, Cr, Cb])
-        return cv2.cvtColor(ycrcb_out, cv2.COLOR_YCrCb2BGR)
+        return None, None, cv2.cvtColor(ycrcb_out, cv2.COLOR_YCrCb2BGR)
 
-    # 모드가 정의 밖이면(실수로 이상한 값 들어올 때 대비)
-    return bgr_img
+    # 모드가 정의 밖이면
+    return None, None, bgr_img
 
 
 def cvimg_to_qpixmap(cv_img):
     """OpenCV 이미지(numpy) -> QPixmap 변환 (Gray or BGR 3ch)."""
     if len(cv_img.shape) == 2:
-        # 그레이스케일
         h, w = cv_img.shape
         bytes_per_line = w
         qimg = QImage(cv_img.data, w, h, bytes_per_line,
                       QImage.Format_Indexed8)
     else:
-        # 컬러 (BGR -> RGB)
         h, w, ch = cv_img.shape
         cv_img_rgb = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
         bytes_per_line = ch * w
@@ -146,11 +157,21 @@ class BandingRemovalApp(QMainWindow):
         self.original_bgr = None  # 원본 이미지(BGR)
         self.filtered_bgr = None  # 필터링 결과(BGR)
 
-        # 메인 위젯
+        # 플롯 관련 멤버
+        self.fig = None
+        self.ax1 = None
+        self.ax2 = None
+        self.img2D = None
+        self.line1 = None
+
+        self.init_ui()
+        self.init_plot()
+
+    def init_ui(self):
+        """PyQt 메인 GUI 세팅"""
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
 
-        # 레이아웃
         vlayout = QVBoxLayout()
         main_widget.setLayout(vlayout)
 
@@ -221,6 +242,57 @@ class BandingRemovalApp(QMainWindow):
         btn_load.clicked.connect(self.load_image)
         btn_layout.addWidget(btn_load)
 
+    def init_plot(self):
+        """Matplotlib Figure/Axes 한 번만 생성하고, 2D/1D 표시를 위한 객체를 잡아둔다."""
+        self.fig, (self.ax1, self.ax2) = plt.subplots(1, 2, figsize=(8, 4))
+
+        # 2D 스펙트럼 (log scale)
+        dummy_2d = np.zeros((10, 10), dtype=np.float32)
+        self.img2D = self.ax1.imshow(dummy_2d)
+        self.ax1.set_title("2D Spectrum (Log)")
+
+        # 중심열 1D 프로파일
+        dummy_1d = np.zeros(10, dtype=np.float32)
+        (self.line1,) = self.ax2.plot(dummy_1d)
+        self.ax2.set_title("Center Column Profile (Log scale)")
+
+        self.fig.tight_layout()
+        self.fig.show()
+
+    def update_fft_plot(self, dft_shifted):
+        """
+        노치 필터 적용 전의 dft_shifted를 받아
+        2D(log scale)와 1D(center column) 프로파일을 업데이트한다.
+        """
+        if dft_shifted is None:
+            return
+
+        # 분리 후 log 스케일
+        planes = cv2.split(dft_shifted)
+        magnitude = cv2.magnitude(planes[0], planes[1])
+        magnitude += 1.0
+        mag_log = np.log(magnitude)
+
+        h, w = mag_log.shape
+        cx = w // 2
+
+        center_col = mag_log[:, cx]
+
+        # 2D 스펙트럼 갱신
+        self.img2D.set_data(mag_log)
+        # 색상 범위 업데이트(자동)
+        self.img2D.set_clim(vmin=mag_log.min(), vmax=mag_log.max())
+
+        # 1D 스펙트럼 갱신
+        x = np.arange(len(center_col))
+        self.line1.set_data(x, center_col)
+        self.ax2.relim()
+        self.ax2.autoscale_view()
+
+        # 실시간 반영
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
     def load_image(self):
         """이미지 파일 열기 & BGR로 보관."""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -254,13 +326,26 @@ class BandingRemovalApp(QMainWindow):
         mode = self.color_mode_combo.currentText()
 
         # 필터 적용
-        self.filtered_bgr = remove_horizontal_banding_bgr(
+        dft_img, dft_shifted, self.filtered_bgr = remove_horizontal_banding_bgr(
             self.original_bgr,
             mode,
             peak_distance=self.peak_distance,
             peak_prominence=self.peak_prominence,
             radius=self.radius
         )
+
+        # ★ "노치 필터 적용 전" 스펙트럼 보기 원하는 경우
+        #    dft_shifted가 "필터 적용 후" 상태가 되지 않도록 주의해야 함.
+        #    지금 코드에서는 remove_banding_single_channel 내에서
+        #    이미 notch_mask를 곱해버리므로 "전/후" 구분이 모호.
+        #
+        #    간단히 "전"이 보고 싶으면, remove_banding_single_channel 진입 직후에
+        #    dft_shifted를 복사해서 리턴시키거나 별도의 함수를 두면 됨.
+        #
+        # 여기서는 "Gray 모드"일 때만 dft_shifted를 리턴하도록 했으므로,
+        # Gray일 경우 그래프 업데이트, 아니면 패스
+        if dft_shifted is not None:
+            self.update_fft_plot(dft_shifted)
 
         # 화면 표시(QPixmap)
         pixmap = cvimg_to_qpixmap(self.filtered_bgr)
