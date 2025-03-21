@@ -41,9 +41,12 @@ def remove_banding_single_channel(gray_img,
     # 중앙열 프로파일
     freq_profile = mag_log[:, center_x]
 
+    distance_in_samples = int(round(peak_distance))
+    distance_in_samples = max(distance_in_samples, 1)
+
     # 피크 탐색
     peaks, _ = find_peaks(freq_profile,
-                          distance=peak_distance,
+                          distance=distance_in_samples,
                           prominence=peak_prominence)
 
     banding_candidates = []
@@ -291,7 +294,7 @@ class BandingRemovalApp(QMainWindow):
         dist_layout = QHBoxLayout()
         self.slider_dist = QSlider(Qt.Horizontal)
         self.slider_dist.setMinimum(1)
-        self.slider_dist.setMaximum(30)
+        self.slider_dist.setMaximum(300)
         self.slider_dist.setValue(int(self.peak_distance))
         self.slider_dist.valueChanged.connect(self.on_slider_update)
         self.label_dist = QLabel(f"{self.peak_distance:}")
@@ -417,14 +420,14 @@ class BandingRemovalApp(QMainWindow):
             return
 
         # 슬라이더 값 읽기
-        self.peak_distance = self.slider_dist.value() / 100.0
+        self.peak_distance = self.slider_dist.value() / 1000.0
         self.peak_prominence = self.slider_prom.value() / 10000.0
         self.radius = self.slider_rad.value()
 
         # 라벨 업데이트
-        self.label_dist.setText(f"{self.peak_distance:.2f}")
+        self.label_dist.setText(f"{self.peak_distance:.3f}")
         self.label_prom.setText(f"{self.peak_prominence:.4f}")
-        self.label_rad.setText(f"{self.radius}")
+        self.label_rad.setText(f"{self.radius: .1}")
 
         # 현재 모드
         mode = self.color_mode_combo.currentText()
