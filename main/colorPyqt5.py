@@ -55,17 +55,33 @@ def remove_banding_single_channel(gray_img,
         if dist > 0:
             banding_candidates.append(p)
 
-    # 노치 필터 마스크
+    # 노치 필터 마스크 초기화 (모든 주파수 통과)
     notch_mask = np.ones((h, w, 2), np.float32)
+
+    # 반영할 "사각형 너비/높이"를 정의합니다.
+    # - radius를 그대로 쓰되, 사각형 모양으로 확장하고 싶다면
+    #   가로/세로 반을 정해서 사용합니다.
+    rect_half_width = 1  # x 방향 반폭 (필요에 따라 조정)
+    rect_half_height = radius  # y 방향 반높이 (필요에 따라 조정)
+
     for p in banding_candidates:
         y_up = p
         y_down = 2 * center_y - p
 
-        # DC 성분 (center_y) 보호 조건 추가
+        # DC 성분 (center_y) 보호 조건
+        # (만약 보호가 필요 없다면 if문 제거)
         if abs(y_up - center_y) > radius:
-            cv2.circle(notch_mask, (center_x, y_up), radius, (0, 0), -1)
+            # (x1, y1) = top-left, (x2, y2) = bottom-right
+            top_left = (center_x - rect_half_width, y_up - rect_half_height)
+            bottom_right = (center_x + rect_half_width,
+                            y_up + rect_half_height)
+            cv2.rectangle(notch_mask, top_left, bottom_right, (0, 0), -1)
+
         if abs(y_down - center_y) > radius:
-            cv2.circle(notch_mask, (center_x, y_down), radius, (0, 0), -1)
+            top_left = (center_x - rect_half_width, y_down - rect_half_height)
+            bottom_right = (center_x + rect_half_width,
+                            y_down + rect_half_height)
+            cv2.rectangle(notch_mask, top_left, bottom_right, (0, 0), -1)
 
     # 노치 필터 적용
     dft_shifted *= notch_mask
@@ -427,7 +443,7 @@ class BandingRemovalApp(QMainWindow):
         # 라벨 업데이트
         self.label_dist.setText(f"{self.peak_distance:.3f}")
         self.label_prom.setText(f"{self.peak_prominence:.4f}")
-        self.label_rad.setText(f"{self.radius: .1}")
+        self.label_rad.setText(f"{self.radius}")
 
         # 현재 모드
         mode = self.color_mode_combo.currentText()
