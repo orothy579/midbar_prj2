@@ -30,6 +30,7 @@ def remove_banding_single_channel(gray_img,
     dft_shifted = np.fft.fftshift(dft_img, axes=[0, 1])
 
     h, w = gray_img.shape
+    offsets = [2, 3, 5, 6]
     center_y, center_x = h // 2, w // 2
 
     # 주파수 세기(log 스케일)
@@ -61,27 +62,35 @@ def remove_banding_single_channel(gray_img,
     # 반영할 "사각형 너비/높이"를 정의합니다.
     # - radius를 그대로 쓰되, 사각형 모양으로 확장하고 싶다면
     #   가로/세로 반을 정해서 사용합니다.
+
+    h, w = gray_img.shape
+    offsets = [2, 3, 5, 6]
+    center_y, center_x = h // 2, w // 2
+
     rect_half_width = 1  # x 방향 반폭 (필요에 따라 조정)
     rect_half_height = radius  # y 방향 반높이 (필요에 따라 조정)
 
-    for p in banding_candidates:
-        y_up = p
-        y_down = 2 * center_y - p
+    for off in offsets:
+        y_up = center_y + off
+        y_down = center_y - off
 
-        # DC 성분 (center_y) 보호 조건
-        # (만약 보호가 필요 없다면 if문 제거)
         if abs(y_up - center_y) > radius:
-            # (x1, y1) = top-left, (x2, y2) = bottom-right
             top_left = (center_x - rect_half_width, y_up - rect_half_height)
             bottom_right = (center_x + rect_half_width,
                             y_up + rect_half_height)
             cv2.rectangle(notch_mask, top_left, bottom_right, (0, 0), -1)
-
         if abs(y_down - center_y) > radius:
             top_left = (center_x - rect_half_width, y_down - rect_half_height)
             bottom_right = (center_x + rect_half_width,
                             y_down + rect_half_height)
             cv2.rectangle(notch_mask, top_left, bottom_right, (0, 0), -1)
+
+        # cv2.circle(notch_mask, (center_x, y_up), radius, (0, 0), -1)
+        # cv2.circle(notch_mask, (center_x, y_down), radius, (0, 0), -1)
+
+    for p in banding_candidates:
+        y_up = p
+        y_down = 2 * center_y - p
 
     # 노치 필터 적용
     dft_shifted *= notch_mask
@@ -91,104 +100,13 @@ def remove_banding_single_channel(gray_img,
     recovered = cv2.idft(dft_ishift, flags=cv2.DFT_REAL_OUTPUT | cv2.DFT_SCALE)
     recovered_norm = cv2.normalize(recovered, None, 0, 255, cv2.NORM_MINMAX)
 
+    recovered_u8 = np.uint8(recovered_norm)
+
+    # CLAHE 적용 (잔물결, 대비 문제 완화)
+    # clahe = cv2.createCLAHE(clipLimit=2, tileGridSize=(15, 15))
+    # dft_img = clahe.apply(recovered_u8)
+
     return dft_img, dft_shifted, np.uint8(recovered_norm)
-
-# def remove_banding_single_channel(gray_img,
-#                                   peak_distance,
-#                                   peak_prominence,
-#                                   radius):
-#     """
-#     단일 채널에서 수평 밴딩 제거.
-#     노치 필터 적용 전의 dft_shifted(시각화 용)와,
-#     최종 복원 이미지를 반환.
-#     """
-#     float_img = np.float32(gray_img)
-#     dft_img = cv2.dft(float_img, flags=cv2.DFT_COMPLEX_OUTPUT)
-#     dft_shifted = np.fft.fftshift(dft_img, axes=[0, 1])
-
-#     h, w = gray_img.shape
-#     center_y, center_x = h // 2, w // 2
-
-#     # 주파수 세기(log 스케일)
-#     planes = cv2.split(dft_shifted)
-#     magnitude = cv2.magnitude(planes[0], planes[1])
-#     magnitude += 1.0
-#     mag_log = np.log(magnitude)
-
-#     # 중앙열 프로파일
-#     freq_profile = mag_log[:, center_x]
-
-#     # 피크 탐색 (기존 피크 탐색 코드는 유지하거나 아래의 계산된 주파수 사용)
-#     # peaks, _ = find_peaks(freq_profile,
-#     #                       distance=peak_distance,
-#     #                       prominence=peak_prominence)
-
-#     banding_candidates = []
-#     # 120 Hz LED, 30 fps 웹캠
-#     flicker_freq = 120  # Hz
-#     frame_rate = 30    # fps
-
-#     # 시간 영역에서의 앨리어싱 주파수 계산
-#     aliased_freqs = []
-#     for n in range(1, 5):  # 최대 4배까지 고려 (120 / 30 = 4)
-#         freq = abs(flicker_freq - n * frame_rate)
-#         if freq > 0 and freq not in aliased_freqs:
-#             aliased_freqs.append(freq)
-#     aliased_freqs.sort()
-#     print(f"앨리어싱된 시간 주파수: {aliased_freqs} Hz")
-
-#     # 시간 주파수를 공간 주파수로 변환 (사이클/이미지 높이)
-#     spatial_freqs = [freq / frame_rate for freq in aliased_freqs]
-#     print(f"대략적인 공간 주파수 (사이클/이미지 높이): {spatial_freqs}")
-
-#     # 공간 주파수를 DFT에서의 인덱스로 변환
-#     # 이미지 높이 h에 대해 s번의 사이클이 있다면, DFT에서는 중심으로부터 +/- s 떨어진 위치에 해당
-#     for s_freq in spatial_freqs:
-#         peak_offset = int(round(s_freq * h))  # 이미지 높이를 곱합니다.
-#         y_up = center_y + peak_offset
-#         y_down = center_y - peak_offset
-
-#         # 유효한 인덱스이고 DC 성분 보호
-#         if 0 < y_up < h and abs(y_up - center_y) > radius and y_up not in banding_candidates:
-#             banding_candidates.append(y_up)
-#         if 0 < y_down < h and abs(y_down - center_y) > radius and y_down != y_up and y_down not in banding_candidates:
-#             banding_candidates.append(y_down)
-
-#     # 기존에 탐지된 피크를 활용하고 싶다면 아래 코드를 추가하여 병합할 수 있습니다.
-#     # if peaks is not None:
-#     #     for p in peaks:
-#     #         dist = abs(p - center_y)
-#     #         if dist > radius and p not in banding_candidates:
-#     #             banding_candidates.append(p)
-#     #             y_down = 2 * center_y - p
-#     #             if y_down != p and y_down not in banding_candidates and 0 < y_down < h and abs(y_down - center_y) > radius:
-#     #                 banding_candidates.append(y_down)
-
-#     # 중복 제거 및 정렬
-#     banding_candidates = sorted(list(set(banding_candidates)))
-#     print(f"제거할 밴딩 후보 주파수 (DFT 인덱스): {banding_candidates}")
-
-#     # 노치 필터 마스크
-#     notch_mask = np.ones((h, w, 2), np.float32)
-#     for p in banding_candidates:
-#         y_up = p
-#         y_down = 2 * center_y - p
-
-#         # DC 성분 (center_y) 보호 조건
-#         if abs(y_up - center_y) > radius and 0 <= y_up < h:
-#             cv2.circle(notch_mask, (center_x, y_up), radius, (0, 0), -1)
-#         if abs(y_down - center_y) > radius and 0 <= y_down < h and y_down != y_up:
-#             cv2.circle(notch_mask, (center_x, y_down), radius, (0, 0), -1)
-
-#     # 노치 필터 적용
-#     dft_shifted *= notch_mask
-
-#     # 역변환
-#     dft_ishift = np.fft.ifftshift(dft_shifted, axes=[0, 1])
-#     recovered = cv2.idft(dft_ishift, flags=cv2.DFT_REAL_OUTPUT | cv2.DFT_SCALE)
-#     recovered_norm = cv2.normalize(recovered, None, 0, 255, cv2.NORM_MINMAX)
-
-#     return dft_img, dft_shifted, np.uint8(recovered_norm)
 
 
 def remove_horizontal_banding_bgr(bgr_img, mode,
@@ -249,6 +167,8 @@ def remove_horizontal_banding_bgr(bgr_img, mode,
 
     # 모드가 정의 밖이면
     return None, None, bgr_img
+
+# 360, 357, 363, 354, 366
 
 
 def cvimg_to_qpixmap(cv_img):
@@ -406,6 +326,11 @@ class BandingRemovalApp(QMainWindow):
         # 색상 범위 업데이트(자동)
         self.img2D.set_clim(vmin=mag_log.min(), vmax=mag_log.max())
 
+        # 축 범위 재정의: -w/2 ~ w/2, -h/2 ~ h/2
+        extent = [-w//2, w//2, -h//2, h//2]
+        # 만약 y축을 아래->위로 그리려면 origin='lower' 설정
+        self.img2D.set_extent(extent)
+
         # 1D 스펙트럼 갱신
         x = np.arange(len(center_col))
         self.line1.set_data(x, center_col)
@@ -436,12 +361,12 @@ class BandingRemovalApp(QMainWindow):
             return
 
         # 슬라이더 값 읽기
-        self.peak_distance = self.slider_dist.value() / 1000.0
+        self.peak_distance = self.slider_dist.value() / 100.0
         self.peak_prominence = self.slider_prom.value() / 10000.0
         self.radius = self.slider_rad.value()
 
         # 라벨 업데이트
-        self.label_dist.setText(f"{self.peak_distance:.3f}")
+        self.label_dist.setText(f"{self.peak_distance:.2f}")
         self.label_prom.setText(f"{self.peak_prominence:.4f}")
         self.label_rad.setText(f"{self.radius}")
 
@@ -456,6 +381,8 @@ class BandingRemovalApp(QMainWindow):
             peak_prominence=self.peak_prominence,
             radius=self.radius
         )
+
+        # self.filtered_bgr = cv2.GaussianBlur(self.filtered_bgr, (5, 5), 60)
 
         #  "노치 필터 적용 전" 스펙트럼 보기 원하는 경우
         #    dft_shifted가 "필터 적용 후" 상태가 되지 않도록 주의해야 함.
