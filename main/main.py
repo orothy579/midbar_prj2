@@ -25,12 +25,16 @@ def remove_banding_single_channel(gray_img,
     노치 필터 적용 전의 dft_shifted(시각화 용)와,
     최종 복원 이미지를 반환.
     """
-    float_img = np.float32(gray_img)
+    # CLAHE 적용 (잔물결, 대비 문제 완화)
+    clahe = cv2.createCLAHE(clipLimit=2, tileGridSize=(8, 8))
+    clahe_img = clahe.apply(gray_img)
+
+    float_img = np.float32(clahe_img)
     dft_img = cv2.dft(float_img, flags=cv2.DFT_COMPLEX_OUTPUT)
     dft_shifted = np.fft.fftshift(dft_img, axes=[0, 1])
 
     h, w = gray_img.shape
-    offsets = [2, 3, 5, 6]
+    offsets = [2, 3, 5, 6, 8, 11, 20]
     center_y, center_x = h // 2, w // 2
 
     # 주파수 세기(log 스케일)
@@ -64,7 +68,7 @@ def remove_banding_single_channel(gray_img,
     #   가로/세로 반을 정해서 사용합니다.
 
     h, w = gray_img.shape
-    offsets = [1, 2, 3, 5, 6]
+    offsets = [1, 2, 3, 5, 6, 11]
     center_y, center_x = h // 2, w // 2
 
     rect_half_width = 1  # x 방향 반폭 (필요에 따라 조정)
@@ -79,13 +83,13 @@ def remove_banding_single_channel(gray_img,
             bottom_right = (center_x + rect_half_width,
                             y_up + rect_half_height)
             cv2.rectangle(notch_mask, top_left,
-                          bottom_right, (1/7, 1/7), -1)
+                          bottom_right, (1/100, 1/100), -1)
         if abs(y_down - center_y) > radius:
             top_left = (center_x - rect_half_width, y_down - rect_half_height)
             bottom_right = (center_x + rect_half_width,
                             y_down + rect_half_height)
             cv2.rectangle(notch_mask, top_left,
-                          bottom_right, (1/7, 1/7), -1)
+                          bottom_right, (1/100, 1/100), -1)
 
         # cv2.circle(notch_mask, (center_x, y_up), radius, (0, 0), -1)
         # cv2.circle(notch_mask, (center_x, y_down), radius, (0, 0), -1)
@@ -104,11 +108,7 @@ def remove_banding_single_channel(gray_img,
 
     recovered_u8 = np.uint8(recovered_norm)
 
-    # CLAHE 적용 (잔물결, 대비 문제 완화)
-    # clahe = cv2.createCLAHE(clipLimit=2, tileGridSize=(15, 15))
-    # dft_img = clahe.apply(recovered_u8)
-
-    return dft_img, dft_shifted, np.uint8(recovered_norm)
+    return dft_img, dft_shifted, recovered_u8
 
 
 def remove_horizontal_banding_bgr(bgr_img, mode,
@@ -246,7 +246,7 @@ class BandingRemovalApp(QMainWindow):
         self.slider_prom = QSlider(Qt.Horizontal)
         self.slider_prom.setMinimum(1)
         self.slider_prom.setMaximum(1000)
-        self.slider_prom.setValue(int(self.peak_prominence * 10000))
+        self.slider_prom.setValue(int(self.peak_prominence))
         self.slider_prom.valueChanged.connect(self.on_slider_update)
         self.label_prom = QLabel(f"{self.peak_prominence:}")
         prom_layout.addWidget(QLabel("prominence:"))
@@ -364,12 +364,12 @@ class BandingRemovalApp(QMainWindow):
 
         # 슬라이더 값 읽기
         self.peak_distance = self.slider_dist.value() / 10.0
-        self.peak_prominence = self.slider_prom.value() / 10000.0
+        self.peak_prominence = self.slider_prom.value() / 100.0
         self.radius = self.slider_rad.value()
 
         # 라벨 업데이트
         self.label_dist.setText(f"{self.peak_distance:.1f}")
-        self.label_prom.setText(f"{self.peak_prominence:.4f}")
+        self.label_prom.setText(f"{self.peak_prominence:.2f}")
         self.label_rad.setText(f"{self.radius}")
 
         # 현재 모드
