@@ -64,7 +64,7 @@ def remove_banding_single_channel(gray_img,
     #   가로/세로 반을 정해서 사용합니다.
 
     h, w = gray_img.shape
-    offsets = [2, 3, 5, 6]
+    offsets = [1.5, 2, 3, 5, 6]
     center_y, center_x = h // 2, w // 2
 
     rect_half_width = 1  # x 방향 반폭 (필요에 따라 조정)
@@ -78,12 +78,14 @@ def remove_banding_single_channel(gray_img,
             top_left = (center_x - rect_half_width, y_up - rect_half_height)
             bottom_right = (center_x + rect_half_width,
                             y_up + rect_half_height)
-            cv2.rectangle(notch_mask, top_left, bottom_right, (0, 0), -1)
+            cv2.rectangle(notch_mask, top_left,
+                          bottom_right, (1/7, 1/7), -1)
         if abs(y_down - center_y) > radius:
             top_left = (center_x - rect_half_width, y_down - rect_half_height)
             bottom_right = (center_x + rect_half_width,
                             y_down + rect_half_height)
-            cv2.rectangle(notch_mask, top_left, bottom_right, (0, 0), -1)
+            cv2.rectangle(notch_mask, top_left,
+                          bottom_right, (1/7, 1/7), -1)
 
         # cv2.circle(notch_mask, (center_x, y_up), radius, (0, 0), -1)
         # cv2.circle(notch_mask, (center_x, y_down), radius, (0, 0), -1)
