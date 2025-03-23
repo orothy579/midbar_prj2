@@ -64,7 +64,7 @@ def remove_banding_single_channel(gray_img,
     #   가로/세로 반을 정해서 사용합니다.
 
     h, w = gray_img.shape
-    offsets = [1.5, 2, 3, 5, 6]
+    offsets = [1, 2, 3, 5, 6]
     center_y, center_x = h // 2, w // 2
 
     rect_half_width = 1  # x 방향 반폭 (필요에 따라 조정)
@@ -363,12 +363,12 @@ class BandingRemovalApp(QMainWindow):
             return
 
         # 슬라이더 값 읽기
-        self.peak_distance = self.slider_dist.value() / 100.0
+        self.peak_distance = self.slider_dist.value() / 10.0
         self.peak_prominence = self.slider_prom.value() / 10000.0
         self.radius = self.slider_rad.value()
 
         # 라벨 업데이트
-        self.label_dist.setText(f"{self.peak_distance:.2f}")
+        self.label_dist.setText(f"{self.peak_distance:.1f}")
         self.label_prom.setText(f"{self.peak_prominence:.4f}")
         self.label_rad.setText(f"{self.radius}")
 
