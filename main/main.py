@@ -25,9 +25,13 @@ def remove_banding_single_channel(gray_img,
     노치 필터 적용 전의 dft_shifted(시각화 용)와,
     최종 복원 이미지를 반환.
     """
-    # CLAHE 적용 (잔물결, 대비 문제 완화)
-    clahe = cv2.createCLAHE(clipLimit=2, tileGridSize=(8, 8))
-    clahe_img = clahe.apply(gray_img)
+
+    # gaussian blur
+    blurred_img = cv2.GaussianBlur(gray_img, (3, 3), 1)
+
+    # CLAHE
+    clahe = cv2.createCLAHE(clipLimit=2, tileGridSize=(16, 16))
+    clahe_img = clahe.apply(blurred_img)
 
     float_img = np.float32(clahe_img)
     dft_img = cv2.dft(float_img, flags=cv2.DFT_COMPLEX_OUTPUT)
