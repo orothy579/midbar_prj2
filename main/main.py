@@ -388,18 +388,6 @@ class BandingRemovalApp(QMainWindow):
             radius=self.radius
         )
 
-        # self.filtered_bgr = cv2.GaussianBlur(self.filtered_bgr, (5, 5), 60)
-
-        #  "노치 필터 적용 전" 스펙트럼 보기 원하는 경우
-        #    dft_shifted가 "필터 적용 후" 상태가 되지 않도록 주의해야 함.
-        #    지금 코드에서는 remove_banding_single_channel 내에서
-        #    이미 notch_mask를 곱해버리므로 "전/후" 구분이 모호.
-        #
-        #    간단히 "전"이 보고 싶으면, remove_banding_single_channel 진입 직후에
-        #    dft_shifted를 복사해서 리턴시키거나 별도의 함수를 두면 됨.
-        #
-        # 여기서는 "Gray 모드"일 때만 dft_shifted를 리턴하도록 했으므로,
-        # Gray일 경우 그래프 업데이트, 아니면 패스
         if dft_shifted is not None:
             self.update_fft_plot(dft_shifted)
 
