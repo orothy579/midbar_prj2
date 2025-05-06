@@ -5,9 +5,8 @@
 이 프로젝트는 **디지털 이미지에서 주파수 도메인을 분석하고, 주기적인 밴딩(Banding) 현상을 자동으로 감지 및 제거하는 시스템**을 구축하는 것을 목표로 합니다. 이를 위해 \*\*푸리에 변환(DFT, Discrete Fourier Transform)\*\*을 활용하여 이미지의 주파수 성분을 분석하고, \*\*노치 필터(Notch Filter)\*\*를 적용하여 특정 주파수를 제거하는 방식을 사용합니다.
 
 ## 결과
-![Before](https://github.com/orothy579/midbar_prj2/blob/main/image1.jpg)
-![After](https://github.com/orothy579/midbar_prj2/blob/main/image2.png)
-
+<img src="https://github.com/orothy579/midbar_prj2/blob/main/image1.jpg" width="640" height="480">
+<img src="https://github.com/orothy579/midbar_prj2/blob/main/image1.png" width="640" height="480">
 
 ## 주요 기능
 
