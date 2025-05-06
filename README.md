@@ -6,7 +6,7 @@
 
 ## 결과
 <img src="https://github.com/orothy579/midbar_prj2/blob/main/image1.jpg" width="640" height="480">
-<img src="https://github.com/orothy579/midbar_prj2/blob/main/image1.png" width="640" height="480">
+<img src="https://github.com/orothy579/midbar_prj2/blob/main/image2.png" width="640" height="480">
 
 ## 주요 기능
 
